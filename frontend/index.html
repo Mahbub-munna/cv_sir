@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV Sir - Professional CV Analysis</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="../uploads/cv-logo.png">
+
+  <script>
+    (function () {
+      const theme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <script>
+    // Inline check for auth to prevent UI Flash
+    if (!localStorage.getItem("token")) {
+      window.location.href = "login.html";
+    }
+  </script>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="logo"><span class="logo-cv">CV</span><span class="logo-sir">Sir</span></div>
+    <button id="logoutBtn" class="logout-btn" style="display: none;" onclick="logout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+        <line x1="12" y1="2" x2="12" y2="12"></line>
+      </svg>
+      Logout
+    </button>
+  </header>
+
+  <div class="wizard-card" id="wizardCard">
+
+    <!-- workedflow container-->
+    <div id="wizardWorkflow">
+      <!-- STEPPER -->
+      <div class="steps">
+        <div class="step active">1 <span>Upload CV</span></div>
+        <div class="line"></div>
+        <div class="step">2 <span>Job Title</span></div>
+        <div class="line"></div>
+        <div class="step">3 <span>Job Description</span></div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step-content active" id="step1">
+        <h2>Upload Your Resume</h2>
+
+        <div class="upload-box">
+          <p>Drag & Drop your resume here</p>
+          <p class="muted">or</p>
+          <input type="file" id="resumeFile" />
+          <small>PDF or DOCX</small>
+        </div>
+
+        <div class="nav-buttons-center">
+          <button type="button" onclick="goToStep(2)">Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-content" id="step2">
+        <h2>Enter Job Title & Experience</h2>
+
+        <div class="autocomplete-container">
+          <input type="text" id="targetRole" placeholder="Start typing a job title..." autocomplete="off" />
+          <div id="roleSuggestions" class="suggestions-box"></div>
+        </div>
+
+        <div class="extra-inputs">
+          <input type="number" id="experienceYears" placeholder="Years of Experience (e.g. 2)" min="0" step="0.5" />
+          <input type="number" id="projectsCount" placeholder="Number of Projects (e.g. 5)" min="0" />
+        </div>
+
+        <div class="nav-buttons">
+          <button type="button" class="secondary" onclick="goToStep(1)">Back</button>
+          <button type="button" onclick="goToStep(3)">Next</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-content" id="step3">
+        <h2>Paste Job Description</h2>
+        <p class="muted" style="margin-bottom: 20px;">Or leave it blank if you just want a general role analysis.</p>
+
+        <textarea id="jdText" rows="8" placeholder="Paste the full job description here..."></textarea>
+
+        <div class="nav-buttons">
+          <button type="button" class="secondary" onclick="goToStep(2)">Back</button>
+          <button type="button" onclick="analyze(event)">Analyze Resume</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS SECTION (Separated) -->
+    <div class="results-section" id="resultsPage" style="display: none;">
+      <div class="results-header">
+        <h2 style="margin: 0;">Analysis Results</h2>
+        <button type="button" class="new-analysis-btn" onclick="resetWizard()">New Analysis</button>
+      </div>
+
+      <div class="result-cards">
+        <div class="card">
+          <h3>Target Role</h3>
+          <p id="resTargetRole">-</p>
+        </div>
+
+        <div class="card">
+          <h3>Role Match %</h3>
+          <p id="resRoleMatch">-</p>
+        </div>
+
+        <div class="card">
+          <h3>JD Match %</h3>
+          <p id="resJdMatch">N/A</p>
+        </div>
+      </div>
+
+      <!-- specifics job readiness -->
+      <div id="specificJobReadiness" class="career-summary"
+        style="display: none; background: #f0fdf4; border: 2px solid #bbf7d0; margin-bottom: 20px; text-align: center;">
+        <h3 style="color: #166534;">Specific Job Match Readiness</h3>
+        <h2 id="resSpecificReadyRoleName"
+          style="margin: 10px 0; font-weight: 800; text-transform: uppercase; color: #166534;">-</h2>
+        <p id="resSpecificReadyScore" style="color: #15803d;">-</p>
+        <span id="resSpecificReadyLevel" class="level-badge">-</span>
+
+        <div id="specificApplyLinks" class="job-links" style="justify-content: center; margin-top: 20px;">
+          <!-- Links populated by JS -->
+        </div>
+      </div>
+
+      <!-- GENERAL CAREER READINESS -->
+      <div id="generalReadinessBox" class="career-summary" style="position: relative;">
+
+        <!-- Premium Pivot Insight -->
+        <div id="pivotInsightContainer" class="pivot-insight-container" style="display: none;">
+          <div class="pivot-icon"><i>i</i></div>
+          <div class="pivot-tooltip" id="pivotTooltipText"></div>
+        </div>
+
+        <h3>General Career Readiness</h3>
+        <h2 style="margin: 10px 0; font-weight: 800; text-transform: uppercase;">
+          <span id="resReadyRoleName">-</span>
+        </h2>
+        <p id="resReadyScore">-</p>
+        <span id="resReadyLevel" class="level-badge">-</span>
+      </div>
+
+      <h3>Role Match Breakdown</h3>
+      <canvas id="roleChart" height="120"></canvas>
+
+      <!-- SKILL SECTIONS -->
+      <div class="skill-section skill-missing" id="roleMissingSkills">
+        <h3>Missing Skills <span class="count-badge" id="roleMissingCount">0</span></h3>
+        <div id="roleMissingSkillsList"></div>
+      </div>
+
+      <div class="skill-section skill-extra" id="roleExtraSkills">
+        <h3>Extra Skills <span class="count-badge" id="roleExtraCount">0</span></h3>
+        <div id="roleExtraSkillsList" class="skill-badge-container"></div>
+      </div>
+
+      <div class="skill-section skill-jd-missing" id="jdSpecificSkills">
+        <h3>Job Description Gaps <span class="count-badge" id="jdMissingCount">0</span></h3>
+        <div id="jdMissingSkillsList"></div>
+      </div>
+
+      <h3 id="recommendedJobsTitle">Recommended Jobs</h3>
+      <div id="recommendedJobs" class="recommended-jobs"></div>
+
+      <!-- UPCOMING FEATURES SECTION -->
+      <div class="upcoming-features-section">
+        <h3>Upcoming Features</h3>
+
+        <div class="premium-feature-card">
+          <div class="premium-badge">COMING SOON | PREMIUM</div>
+          <h4>🚨 Emergency Job Mode (Premium)</h4>
+          <p>
+            The tech industry can be unpredictable. With sudden layoffs at giants like <strong>Oracle</strong> becoming
+            a reality,
+            we understand the anxiety that comes with losing your security without notice.
+            But you are not alone.
+          </p>
+          <p>
+            CV Sir is developing the <strong>Emergency Job Mode</strong>—a specialized toolkit designed to be your
+            career safety net.
+            In times of crisis, this high-velocity mode will prioritize rapid-matching and accelerated application
+            tools,
+            helping you secure a new role and stable income before the dust even settles.
+          </p>
+          <div class="trust-footer">
+            "We are building this to ensure your career remains unstoppable. Stay confident—CV Sir has your back."
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  </div>
+
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+    🌙
+  </button>
+
+  <!-- AI MOCK INTERVIEW PANEL (Persistent Bar) -->
+  <div id="mockInterviewPanel" class="mock-panel">
+    <div class="mock-header" onclick="toggleMockInterview()">
+      <span>🎙️ AI Mock Interview</span>
+      <span id="mockToggleIcon">▲</span>
+    </div>
+    <div id="chatMessages" class="chat-messages">
+      <!-- AI/User messages will appear here -->
+    </div>
+    <div class="chat-input-area" id="chatInputArea">
+      <input type="text" id="chatInput" placeholder="Type your answer..." onkeypress="handleChatKey(event)" />
+      <button onclick="sendChatMessage()">Submit</button>
+    </div>
+
+    <!-- RESULT OVERLAY -->
+    <div id="mockResultOverlay" class="mock-result-overlay">
+      <div style="font-size: 3rem; margin-bottom: 20px;">🏆</div>
+      <h3>Interview Result</h3>
+      <p id="mockScoreDisplay" style="font-size: 24px; font-weight: 800; margin: 10px 0; color: var(--primary);">7/10
+      </p>
+      <p id="mockImprovementMsg" style="color: var(--text-muted); margin-bottom: 30px;">Excellent profile! Focus on your
+        communication skills to stand out.</p>
+      <button onclick="closeMockInterview()" style="width: 100%;">Close Interview</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

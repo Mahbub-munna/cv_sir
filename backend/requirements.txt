@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+pdfplumber
+python-docx
+pymongo
+pyjwt
+bcrypt
+python-dotenv
